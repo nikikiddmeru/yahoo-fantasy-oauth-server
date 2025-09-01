@@ -4,467 +4,412 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yahoo Fantasy Draft Companion</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; }
+        .animate-spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
     </style>
 </head>
-<body>
-    <div id="root"></div>
+<body class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-2">Yahoo Fantasy Draft Companion</h1>
+            <p class="text-purple-200">League ID: 268821 | 14 Teams | SuperFlex</p>
+        </div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useCallback } = React;
-        const { Search, Users, TrendingUp, Calendar, Target, RefreshCw, Settings, AlertCircle } = lucide;
+        <!-- Connection Status -->
+        <div class="bg-green-500/20 border border-green-500/50 rounded-lg p-4 mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                    <span id="connectionStatus">✅ Connected to Yahoo Fantasy API</span>
+                </div>
+                <button onclick="syncPlayers()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    🔄 Sync Players
+                </button>
+            </div>
+        </div>
 
-        const YahooFantasyDraftCompanion = () => {
-          const [isAuthenticated, setIsAuthenticated] = useState(true);
-          const [leagueData, setLeagueData] = useState(null);
-          const [availablePlayers, setAvailablePlayers] = useState([]);
-          const [draftPicks, setDraftPicks] = useState([]);
-          const [myTeam, setMyTeam] = useState([]);
-          const [recommendations, setRecommendations] = useState([]);
-          const [loading, setLoading] = useState(false);
-          const [selectedPosition, setSelectedPosition] = useState('ALL');
+        <!-- Main Dashboard -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column - Controls & Team Status -->
+            <div class="space-y-6">
+                <!-- League Status -->
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                        </svg>
+                        <h2 class="text-xl font-semibold">League Status</h2>
+                    </div>
+                    <div id="leagueInfo">
+                        <button onclick="connectLeague()" id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-medium transition-colors">
+                            Connect to League
+                        </button>
+                    </div>
+                </div>
 
-          // League configuration
-          const LEAGUE_CONFIG = {
+                <!-- My Team -->
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <h2 class="text-xl font-semibold">My Team (<span id="teamCount">0</span>)</h2>
+                    </div>
+                    <div id="myTeamList" class="text-gray-300">
+                        No players drafted yet
+                    </div>
+                </div>
+
+                <!-- Position Filter -->
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                    <h3 class="font-semibold mb-3">Filter by Position</h3>
+                    <select id="positionFilter" onchange="filterRecommendations()" class="w-full bg-black/30 border border-gray-600 rounded-lg px-3 py-2">
+                        <option value="ALL">All Positions</option>
+                        <option value="QB">Quarterback</option>
+                        <option value="RB">Running Back</option>
+                        <option value="WR">Wide Receiver</option>
+                        <option value="TE">Tight End</option>
+                        <option value="DEF">Defense</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Right Columns - Player Recommendations -->
+            <div class="lg:col-span-2">
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                        <h2 class="text-xl font-semibold">Recommended Picks</h2>
+                    </div>
+                    
+                    <div id="recommendationsList" class="space-y-4">
+                        <div class="text-center py-8 text-gray-400">
+                            Loading recommendations...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // App state
+        let leagueData = null;
+        let myTeam = [];
+        let draftPicks = [];
+        let allPlayers = [];
+        let recommendations = [];
+        let loading = false;
+
+        // Your access token
+        const ACCESS_TOKEN = '3Al3qWOd7lzB8IrP.iT.9EG7FxXOQ1Pgc2WItaH2j9ip73X_EUo0By5hly5zIljtXHqHW0shpBAHM7oQpVvYpOp7xyycB7rmEDgsMXdIEIfTJZTjq69r8597b3karfCMeURok0B1vqdAW3NT1QEFXrd4ftqJiAEfv06QZ4b6O4FAAi3TG1hW6A1RsB3C_KXC.KpZJXT5wXxWcF4Yv9vqc5xxbOl.xCOshG4sQzoteCS0qDwGPzVEyFSaeQitOFhy4uK3PcIwsbXdG9WTEoCImmL_J_Pn1dxM2.gnTematlGFPPx7pKyrhR8n1TnWYNC1rV47ExtJf3Lip3vjwMuVbiQoBHQo1ED3sSprhXXQst_ZrdWpwoGejAuaOz6pEcdrwTIsltMX3IyGoY8e_ooIcrRU81i6_v2MUAIZeWsat5McCxXfJa9uIj9Jf3I.QHc19sBunb4R6p.BZy2M2Rs6jP1soP_Efbtwgi_AJCXhaiSp4cpgafn9Rm6hNwOrAy7TLBMdVP9hhJysAH6jtYXpA6ria3U8ec0d5ByUImAeqy_JKqn5jZrwlGf34_kni1oF2im.4Iw7WH_hBmxCdqjAmH3Bk9GWuZ4zDxb9y3GCt9iSyPsqyJDPJC0wRIy_K4TxAwFMS_.4M8xnmQVtHXdUAHOlSlcliJ95Qn5pQfJygMmPGExzHfOQ5KeOIbzn1NXsxBIw0Q_cfh5tCVGOBcb.0.GGOejbwrimNY1pQduSgd_KQ7JvcTPeMReh.FS4E.sA4h0wAc6czjgJetrImncvWCrKwlRdUYsndQEM77cpI28xABhpWBDQs8ym542nCbdXWkp8MLwKVgNzDQ24gMtbEuteVTWg_QV8X4ruR2iB6eZuMiE.OrRzYmkHE80B0eo0MSp2Xd33mU9I7.clo.38thoKEX4YIw9sUErCoA--';
+
+        // League configuration
+        const LEAGUE_CONFIG = {
             id: '268821',
             teams: 14,
-            positions: {
-              QB: 1, WR: 2, RB: 2, TE: 1, FLEX: 1, SUPERFLEX: 1, DEF: 1, BENCH: 5
-            },
+            positions: { QB: 1, WR: 2, RB: 2, TE: 1, FLEX: 1, SUPERFLEX: 1, DEF: 1, BENCH: 5 },
             playoffWeeks: [15, 16, 17]
-          };
+        };
 
-          // Your pre-authorized access token
-          const accessToken = '3Al3qWOd7lzB8IrP.iT.9EG7FxXOQ1Pgc2WItaH2j9ip73X_EUo0By5hly5zIljtXHqHW0shpBAHM7oQpVvYpOp7xyycB7rmEDgsMXdIEIfTJZTjq69r8597b3karfCMeURok0B1vqdAW3NT1QEFXrd4ftqJiAEfv06QZ4b6O4FAAi3TG1hW6A1RsB3C_KXC.KpZJXT5wXxWcF4Yv9vqc5xxbOl.xCOshG4sQzoteCS0qDwGPzVEyFSaeQitOFhy4uK3PcIwsbXdG9WTEoCImmL_J_Pn1dxM2.gnTematlGFPPx7pKyrhR8n1TnWYNC1rV47ExtJf3Lip3vjwMuVbiQoBHQo1ED3sSprhXXQst_ZrdWpwoGejAuaOz6pEcdrwTIsltMX3IyGoY8e_ooIcrRU81i6_v2MUAIZeWsat5McCxXfJa9uIj9Jf3I.QHc19sBunb4R6p.BZy2M2Rs6jP1soP_Efbtwgi_AJCXhaiSp4cpgafn9Rm6hNwOrAy7TLBMdVP9hhJysAH6jtYXpA6ria3U8ec0d5ByUImAeqy_JKqn5jZrwlGf34_kni1oF2im.4Iw7WH_hBmxCdqjAmH3Bk9GWuZ4zDxb9y3GCt9iSyPsqyJDPJC0wRIy_K4TxAwFMS_.4M8xnmQVtHXdUAHOlSlcliJ95Qn5pQfJygMmPGExzHfOQ5KeOIbzn1NXsxBIw0Q_cfh5tCVGOBcb.0.GGOejbwrimNY1pQduSgd_KQ7JvcTPeMReh.FS4E.sA4h0wAc6czjgJetrImncvWCrKwlRdUYsndQEM77cpI28xABhpWBDQs8ym542nCbdXWkp8MLwKVgNzDQ24gMtbEuteVTWg_QV8X4ruR2iB6eZuMiE.OrRzYmkHE80B0eo0MSp2Xd33mU9I7.clo.38thoKEX4YIw9sUErCoA--';
-
-          // Mock player data with ratings and schedule strength
-          const mockPlayers = [
+        // Mock players for fallback
+        const mockPlayers = [
             { id: 1, name: 'Josh Allen', position: 'QB', team: 'BUF', rating: 95, sosRank: 8, playoffSos: 5, adp: 1.2, projected: 24.5 },
             { id: 2, name: 'Lamar Jackson', position: 'QB', team: 'BAL', rating: 93, sosRank: 12, playoffSos: 3, adp: 1.8, projected: 23.8 },
             { id: 3, name: 'Justin Jefferson', position: 'WR', team: 'MIN', rating: 98, sosRank: 6, playoffSos: 8, adp: 0.8, projected: 19.2 },
-            { id: 4, name: 'Cooper Kupp', position: 'WR', team: 'LAR', rating: 94, sosRank: 4, playoffSos: 2, adp: 1.5, projected: 18.5 },
+            { id: 4, name: 'Cooper Kupp', position: 'WR', team: 'SEA', rating: 88, sosRank: 15, playoffSos: 12, adp: 4.8, projected: 16.2 },
             { id: 5, name: 'Christian McCaffrey', position: 'RB', team: 'SF', rating: 96, sosRank: 10, playoffSos: 6, adp: 0.5, projected: 20.1 },
-            { id: 6, name: 'Austin Ekeler', position: 'RB', team: 'LAC', rating: 91, sosRank: 3, playoffSos: 1, adp: 2.1, projected: 17.8 },
+            { id: 6, name: 'Austin Ekeler', position: 'RB', team: 'WAS', rating: 78, sosRank: 24, playoffSos: 20, adp: 8.3, projected: 12.4 },
             { id: 7, name: 'Travis Kelce', position: 'TE', team: 'KC', rating: 95, sosRank: 7, playoffSos: 4, adp: 2.8, projected: 16.2 },
-            { id: 8, name: 'Mark Andrews', position: 'TE', team: 'BAL', rating: 89, sosRank: 15, playoffSos: 9, adp: 3.2, projected: 14.5 }
-          ];
+            { id: 8, name: 'Mark Andrews', position: 'TE', team: 'BAL', rating: 89, sosRank: 15, playoffSos: 9, adp: 3.2, projected: 14.5 },
+            { id: 9, name: 'Stefon Diggs', position: 'WR', team: 'HOU', rating: 92, sosRank: 11, playoffSos: 7, adp: 2.3, projected: 17.1 },
+            { id: 10, name: 'Saquon Barkley', position: 'RB', team: 'PHI', rating: 88, sosRank: 14, playoffSos: 12, adp: 3.8, projected: 16.4 }
+        ];
 
-          const [players, setPlayers] = useState(mockPlayers);
+        // Connect to league
+        async function connectLeague() {
+            const btn = document.getElementById('connectBtn');
+            const originalText = btn.textContent;
+            
+            btn.textContent = 'Connecting...';
+            btn.disabled = true;
+            loading = true;
 
-          // Real Yahoo API calls
-          const fetchLeagueData = async () => {
-            setLoading(true);
             try {
-              console.log('Making API call to Yahoo...');
-              const response = await fetch(`/api/yahoo-proxy?endpoint=league/nfl.l.${LEAGUE_CONFIG.id}`, {
-                headers: {
-                  'Authorization': `Bearer ${accessToken}`
-                }
-              });
-
-              if (response.ok) {
-                const data = await response.json();
-                console.log('League data received:', data);
+                console.log('Connecting to Yahoo Fantasy League...');
                 
-                const league = data.fantasy_content.league[0];
-                setLeagueData({
-                  name: league.name,
-                  size: league.num_teams,
-                  draftStatus: league.draft_status,
-                  currentPick: league.current_weekly_period || 1,
-                  season: league.season,
-                  gameCode: league.game_code
+                const response = await fetch('/api/yahoo-proxy?endpoint=league/nfl.l.' + LEAGUE_CONFIG.id, {
+                    headers: {
+                        'Authorization': 'Bearer ' + ACCESS_TOKEN
+                    }
                 });
-                
-                await fetchDraftResults();
-              } else {
-                const errorData = await response.json();
-                console.error('API Error:', errorData);
-                throw new Error(`API call failed: ${response.status}`);
-              }
-            } catch (error) {
-              console.error('Failed to fetch league data:', error);
-              alert(`Failed to fetch league data: ${error.message}`);
-            }
-            setLoading(false);
-          };
 
-          const fetchDraftResults = async () => {
-            try {
-              const response = await fetch(`/api/yahoo-proxy?endpoint=league/nfl.l.${LEAGUE_CONFIG.id}/draftresults`, {
-                headers: {
-                  'Authorization': `Bearer ${accessToken}`
-                }
-              });
-
-              if (response.ok) {
-                const data = await response.json();
-                const picks = data.fantasy_content.league[1]?.draft_results || [];
-                setDraftPicks(picks.map(pick => {
-                  const result = pick.draft_result;
-                  return {
-                    playerId: result.player_key,
-                    playerName: result.player_name,
-                    teamId: result.team_key,
-                    pick: result.pick,
-                    round: result.round
-                  };
-                }));
-              }
-            } catch (error) {
-              console.error('Failed to fetch draft results:', error);
-            }
-          };
-
-          const fetchAvailablePlayers = async () => {
-            try {
-              const response = await fetch(`/api/yahoo-proxy?endpoint=league/nfl.l.${LEAGUE_CONFIG.id}/players;status=A`, {
-                headers: {
-                  'Authorization': `Bearer ${accessToken}`
-                }
-              });
-
-              if (response.ok) {
-                const data = await response.json();
-                const playersList = data.fantasy_content.league[1]?.players || [];
-                
-                const transformedPlayers = playersList.map(playerData => {
-                  const player = playerData.player[0];
-                  return {
-                    id: player.player_key,
-                    name: player.name.full,
-                    position: player.eligible_positions[0].position,
-                    team: player.editorial_team_abbr,
-                    rating: Math.floor(Math.random() * 40) + 60,
-                    sosRank: Math.floor(Math.random() * 32) + 1,
-                    playoffSos: Math.floor(Math.random() * 32) + 1,
-                    adp: player.average_draft_position || 999,
-                    projected: Math.floor(Math.random() * 10) + 10
-                  };
-                });
-                
-                setPlayers(transformedPlayers);
-              }
-            } catch (error) {
-              console.error('Failed to fetch available players:', error);
-            }
-          };
-
-          // Calculate recommendation score
-          const calculateRecommendationScore = useCallback((player, teamNeeds, competitorTargets) => {
-            let score = 0;
-            score += (player.rating / 100) * 40;
-            score += (32 - player.sosRank) / 32 * 20;
-            score += (32 - player.playoffSos) / 32 * 20;
-            const positionNeed = teamNeeds[player.position] || 0;
-            score += positionNeed * 15;
-            const competitionLevel = competitorTargets[player.id] || 0;
-            score += Math.max(0, (5 - competitionLevel)) * 1;
-            return Math.round(score * 10) / 10;
-          }, []);
-
-          const generateRecommendations = useCallback(() => {
-            const teamNeeds = calculateTeamNeeds();
-            const competitorTargets = analyzeCompetitorTargets();
-            
-            const availablePlayersList = players.filter(player => 
-              !draftPicks.some(pick => pick.playerId === player.id)
-            );
-            
-            const scored = availablePlayersList.map(player => ({
-              ...player,
-              recommendationScore: calculateRecommendationScore(player, teamNeeds, competitorTargets),
-              reason: generateRecommendationReason(player, teamNeeds)
-            }));
-            
-            setRecommendations(scored.sort((a, b) => b.recommendationScore - a.recommendationScore));
-          }, [players, draftPicks, myTeam, calculateRecommendationScore]);
-
-          const calculateTeamNeeds = () => {
-            const needs = { ...LEAGUE_CONFIG.positions };
-            myTeam.forEach(player => {
-              if (needs[player.position] > 0) {
-                needs[player.position]--;
-              }
-            });
-            Object.keys(needs).forEach(pos => {
-              needs[pos] = needs[pos] > 0 ? 1 : 0.2;
-            });
-            return needs;
-          };
-
-          const analyzeCompetitorTargets = () => {
-            const targets = {};
-            players.forEach(player => {
-              targets[player.id] = Math.floor(Math.random() * 5);
-            });
-            return targets;
-          };
-
-          const generateRecommendationReason = (player, teamNeeds) => {
-            const reasons = [];
-            if (player.rating >= 90) reasons.push('Elite talent');
-            if (player.playoffSos <= 5) reasons.push('Easy playoff schedule');
-            if (teamNeeds[player.position] >= 1) reasons.push('Fills positional need');
-            if (player.sosRank <= 10) reasons.push('Favorable season schedule');
-            return reasons.length > 0 ? reasons.join(', ') : 'Solid value pick';
-          };
-
-          const draftPlayer = (player) => {
-            setMyTeam(prev => [...prev, player]);
-            setDraftPicks(prev => [...prev, { 
-              playerId: player.id, 
-              teamId: 'my-team', 
-              pick: prev.length + 1 
-            }]);
-          };
-
-          useEffect(() => {
-            generateRecommendations();
-          }, [myTeam, draftPicks, generateRecommendations]);
-
-          const filteredRecommendations = selectedPosition === 'ALL' 
-            ? recommendations 
-            : recommendations.filter(p => p.position === selectedPosition);
-
-          return React.createElement('div', {
-            className: "min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white"
-          }, 
-            React.createElement('div', {
-              className: "container mx-auto px-4 py-8"
-            },
-              // Header
-              React.createElement('div', {
-                className: "text-center mb-8"
-              },
-                React.createElement('h1', {
-                  className: "text-4xl font-bold mb-2"
-                }, "Yahoo Fantasy Draft Companion"),
-                React.createElement('p', {
-                  className: "text-purple-200"
-                }, `League ID: ${LEAGUE_CONFIG.id} | 14 Teams | SuperFlex`)
-              ),
-
-              // Connection Status
-              React.createElement('div', {
-                className: "bg-green-500/20 border border-green-500/50 rounded-lg p-4 mb-8"
-              },
-                React.createElement('div', {
-                  className: "flex items-center justify-between"
-                },
-                  React.createElement('div', {
-                    className: "flex items-center gap-3"
-                  },
-                    React.createElement('div', {
-                      className: "w-3 h-3 bg-green-400 rounded-full animate-pulse"
-                    }),
-                    React.createElement('span', {}, "✅ Connected to Yahoo Fantasy API")
-                  ),
-                  React.createElement('button', {
-                    onClick: fetchAvailablePlayers,
-                    className: "bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                  },
-                    React.createElement(RefreshCw, { className: "w-4 h-4" }),
-                    "Sync Players"
-                  )
-                )
-              ),
-
-              // Main Dashboard
-              React.createElement('div', {
-                className: "grid grid-cols-1 lg:grid-cols-3 gap-8"
-              },
-                // Left Column - Controls & Team Status
-                React.createElement('div', {
-                  className: "space-y-6"
-                },
-                  // League Status
-                  React.createElement('div', {
-                    className: "bg-white/10 backdrop-blur-sm rounded-lg p-6"
-                  },
-                    React.createElement('div', {
-                      className: "flex items-center gap-3 mb-4"
-                    },
-                      React.createElement(Users, { className: "w-6 h-6" }),
-                      React.createElement('h2', {
-                        className: "text-xl font-semibold"
-                      }, "League Status")
-                    ),
-                    leagueData ? React.createElement('div', {
-                      className: "space-y-2"
-                    },
-                      React.createElement('p', {}, React.createElement('strong', {}, "League: "), leagueData.name),
-                      React.createElement('p', {}, React.createElement('strong', {}, "Teams: "), leagueData.size),
-                      React.createElement('p', {}, React.createElement('strong', {}, "Current Pick: "), "#", leagueData.currentPick),
-                      React.createElement('p', {}, React.createElement('strong', {}, "Status: "), 
-                        React.createElement('span', { className: "text-green-400" }, leagueData.draftStatus || 'Connected')
-                      ),
-                      React.createElement('button', {
-                        onClick: fetchLeagueData,
-                        disabled: loading,
-                        className: "w-full mt-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                      },
-                        loading ? React.createElement(RefreshCw, { className: "w-4 h-4 animate-spin" }) : React.createElement(RefreshCw, { className: "w-4 h-4" }),
-                        loading ? 'Refreshing...' : 'Refresh League'
-                      )
-                    ) : React.createElement('button', {
-                      onClick: fetchLeagueData,
-                      disabled: loading,
-                      className: "w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                    },
-                      loading ? React.createElement(RefreshCw, { className: "w-4 h-4 animate-spin" }) : React.createElement(RefreshCw, { className: "w-4 h-4" }),
-                      loading ? 'Connecting...' : 'Connect to League'
-                    )
-                  ),
-
-                  // My Team
-                  React.createElement('div', {
-                    className: "bg-white/10 backdrop-blur-sm rounded-lg p-6"
-                  },
-                    React.createElement('div', {
-                      className: "flex items-center gap-3 mb-4"
-                    },
-                      React.createElement(Target, { className: "w-6 h-6" }),
-                      React.createElement('h2', {
-                        className: "text-xl font-semibold"
-                      }, `My Team (${myTeam.length})`)
-                    ),
-                    myTeam.length > 0 ? React.createElement('div', {
-                      className: "space-y-2"
-                    }, myTeam.map((player, idx) => 
-                      React.createElement('div', {
-                        key: idx,
-                        className: "flex justify-between items-center p-2 bg-green-500/20 rounded"
-                      },
-                        React.createElement('span', {}, player.name),
-                        React.createElement('span', {
-                          className: "text-sm text-green-300"
-                        }, player.position)
-                      )
-                    )) : React.createElement('p', {
-                      className: "text-gray-300"
-                    }, "No players drafted yet")
-                  ),
-
-                  // Position Filter
-                  React.createElement('div', {
-                    className: "bg-white/10 backdrop-blur-sm rounded-lg p-6"
-                  },
-                    React.createElement('h3', {
-                      className: "font-semibold mb-3"
-                    }, "Filter by Position"),
-                    React.createElement('select', {
-                      value: selectedPosition,
-                      onChange: (e) => setSelectedPosition(e.target.value),
-                      className: "w-full bg-black/30 border border-gray-600 rounded-lg px-3 py-2"
-                    },
-                      React.createElement('option', { value: "ALL" }, "All Positions"),
-                      React.createElement('option', { value: "QB" }, "Quarterback"),
-                      React.createElement('option', { value: "RB" }, "Running Back"),
-                      React.createElement('option', { value: "WR" }, "Wide Receiver"),
-                      React.createElement('option', { value: "TE" }, "Tight End"),
-                      React.createElement('option', { value: "DEF" }, "Defense")
-                    )
-                  )
-                ),
-
-                // Right Columns - Player Recommendations
-                React.createElement('div', {
-                  className: "lg:col-span-2"
-                },
-                  React.createElement('div', {
-                    className: "bg-white/10 backdrop-blur-sm rounded-lg p-6"
-                  },
-                    React.createElement('div', {
-                      className: "flex items-center gap-3 mb-6"
-                    },
-                      React.createElement(TrendingUp, { className: "w-6 h-6" }),
-                      React.createElement('h2', {
-                        className: "text-xl font-semibold"
-                      }, "Recommended Picks")
-                    ),
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('League data received:', data);
                     
-                    React.createElement('div', {
-                      className: "space-y-4"
-                    }, filteredRecommendations.slice(0, 10).map((player, idx) =>
-                      React.createElement('div', {
-                        key: player.id,
-                        className: "bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors"
-                      },
-                        React.createElement('div', {
-                          className: "flex items-center justify-between mb-2"
-                        },
-                          React.createElement('div', {
-                            className: "flex items-center gap-3"
-                          },
-                            React.createElement('span', {
-                              className: "bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm"
-                            }, idx + 1),
-                            React.createElement('div', {},
-                              React.createElement('h3', {
-                                className: "font-semibold"
-                              }, player.name),
-                              React.createElement('p', {
-                                className: "text-sm text-gray-300"
-                              }, `${player.team} - ${player.position}`)
-                            )
-                          ),
-                          React.createElement('div', {
-                            className: "text-right"
-                          },
-                            React.createElement('div', {
-                              className: "text-lg font-bold text-green-400"
-                            }, player.recommendationScore),
-                            React.createElement('div', {
-                              className: "text-xs text-gray-400"
-                            }, "Score")
-                          )
-                        ),
-                        
-                        React.createElement('div', {
-                          className: "grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3"
-                        },
-                          React.createElement('div', {},
-                            React.createElement('span', { className: "text-gray-400" }, "Rating: "), player.rating
-                          ),
-                          React.createElement('div', {},
-                            React.createElement('span', { className: "text-gray-400" }, "SOS Rank: "), player.sosRank
-                          ),
-                          React.createElement('div', {},
-                            React.createElement('span', { className: "text-gray-400" }, "Playoff SOS: "), player.playoffSos
-                          ),
-                          React.createElement('div', {},
-                            React.createElement('span', { className: "text-gray-400" }, "ADP: "), player.adp
-                          )
-                        ),
-                        
-                        React.createElement('div', {
-                          className: "flex items-center justify-between"
-                        },
-                          React.createElement('p', {
-                            className: "text-sm text-blue-300"
-                          }, player.reason),
-                          React.createElement('button', {
-                            onClick: () => draftPlayer(player),
-                            className: "bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                          }, "Draft Player")
-                        )
-                      )
-                    ))
-                  )
-                )
-              )
-            )
-          );
-        };
+                    const league = data.fantasy_content.league[0];
+                    leagueData = {
+                        name: league.name,
+                        size: league.num_teams,
+                        draftStatus: league.draft_status,
+                        currentPick: league.current_weekly_period || 1,
+                        season: league.season
+                    };
+                    
+                    updateLeagueDisplay();
+                    await fetchDraftResults();
+                    loadPlayers();
+                    
+                } else {
+                    const errorData = await response.json();
+                    console.error('API Error:', errorData);
+                    throw new Error('API call failed: ' + response.status);
+                }
+                
+            } catch (error) {
+                console.error('Connection failed:', error);
+                alert('Connection failed: ' + error.message + '. Loading demo data instead.');
+                loadDemoData();
+            }
 
-        ReactDOM.render(React.createElement(YahooFantasyDraftCompanion), document.getElementById('root'));
+            btn.textContent = originalText;
+            btn.disabled = false;
+            loading = false;
+        }
+
+        // Load demo data
+        function loadDemoData() {
+            leagueData = {
+                name: 'Demo League (League 268821)',
+                size: 14,
+                draftStatus: 'in_progress',
+                currentPick: Math.floor(Math.random() * 50) + 1,
+                season: '2024'
+            };
+            
+            allPlayers = mockPlayers.slice();
+            updateLeagueDisplay();
+            generateRecommendations();
+        }
+
+        // Update league display
+        function updateLeagueDisplay() {
+            if (leagueData) {
+                document.getElementById('leagueInfo').innerHTML = 
+                    '<div class="space-y-2">' +
+                    '<p><strong>League:</strong> ' + leagueData.name + '</p>' +
+                    '<p><strong>Teams:</strong> ' + leagueData.size + '</p>' +
+                    '<p><strong>Current Pick:</strong> #' + leagueData.currentPick + '</p>' +
+                    '<p><strong>Status:</strong> <span class="text-green-400">' + (leagueData.draftStatus || 'Connected') + '</span></p>' +
+                    '<button onclick="connectLeague()" class="w-full mt-3 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-medium transition-colors">🔄 Refresh League</button>' +
+                    '</div>';
+            }
+        }
+
+        // Fetch draft results
+        async function fetchDraftResults() {
+            try {
+                const response = await fetch('/api/yahoo-proxy?endpoint=league/nfl.l.' + LEAGUE_CONFIG.id + '/draftresults', {
+                    headers: {
+                        'Authorization': 'Bearer ' + ACCESS_TOKEN
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const picks = data.fantasy_content.league[1] ? data.fantasy_content.league[1].draft_results || [] : [];
+                    draftPicks = picks.map(function(pick) {
+                        const result = pick.draft_result;
+                        return {
+                            playerId: result.player_key,
+                            playerName: result.player_name,
+                            teamId: result.team_key,
+                            pick: result.pick,
+                            round: result.round
+                        };
+                    });
+                    console.log('Draft picks loaded:', draftPicks.length);
+                }
+            } catch (error) {
+                console.error('Failed to fetch draft results:', error);
+            }
+        }
+
+        // Load players
+        function loadPlayers() {
+            allPlayers = mockPlayers.map(function(player) {
+                return {
+                    id: player.id,
+                    name: player.name,
+                    position: player.position,
+                    team: player.team,
+                    rating: player.rating,
+                    sosRank: player.sosRank,
+                    playoffSos: player.playoffSos,
+                    adp: player.adp,
+                    projected: player.projected,
+                    isDrafted: draftPicks.some(function(pick) { return pick.playerName === player.name; })
+                };
+            });
+            
+            generateRecommendations();
+        }
+
+        // Generate recommendations
+        function generateRecommendations() {
+            const availablePlayers = allPlayers.filter(function(player) {
+                return !draftPicks.some(function(pick) { return pick.playerName === player.name; }) &&
+                       !myTeam.some(function(teamPlayer) { return teamPlayer.id === player.id; });
+            });
+
+            // Calculate team needs
+            const needs = Object.assign({}, LEAGUE_CONFIG.positions);
+            myTeam.forEach(function(player) {
+                if (needs[player.position] > 0) {
+                    needs[player.position]--;
+                }
+            });
+
+            // Score players
+            recommendations = availablePlayers.map(function(player) {
+                let score = 0;
+                score += (player.rating / 100) * 40;
+                score += (32 - player.sosRank) / 32 * 20;
+                score += (32 - player.playoffSos) / 32 * 20;
+                
+                const positionNeed = needs[player.position] > 0 ? 1 : 0.2;
+                score += positionNeed * 15;
+                
+                const competitionLevel = Math.floor(Math.random() * 5);
+                score += Math.max(0, (5 - competitionLevel)) * 1;
+
+                // Generate reason
+                const reasons = [];
+                if (player.rating >= 90) reasons.push('Elite talent');
+                if (player.playoffSos <= 5) reasons.push('Easy playoff schedule');
+                if (needs[player.position] > 0) reasons.push('Fills positional need');
+                if (player.sosRank <= 10) reasons.push('Favorable season schedule');
+
+                return {
+                    id: player.id,
+                    name: player.name,
+                    position: player.position,
+                    team: player.team,
+                    rating: player.rating,
+                    sosRank: player.sosRank,
+                    playoffSos: player.playoffSos,
+                    adp: player.adp,
+                    projected: player.projected,
+                    recommendationScore: Math.round(score * 10) / 10,
+                    reason: reasons.length > 0 ? reasons.join(', ') : 'Solid value pick'
+                };
+            });
+
+            recommendations.sort(function(a, b) { return b.recommendationScore - a.recommendationScore; });
+            filterRecommendations();
+        }
+
+        // Filter recommendations by position
+        function filterRecommendations() {
+            const selectedPosition = document.getElementById('positionFilter').value;
+            const filtered = selectedPosition === 'ALL' 
+                ? recommendations 
+                : recommendations.filter(function(p) { return p.position === selectedPosition; });
+
+            displayRecommendations(filtered.slice(0, 10));
+        }
+
+        // Display recommendations
+        function displayRecommendations(players) {
+            const container = document.getElementById('recommendationsList');
+            
+            if (players.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-gray-400">No recommendations available</div>';
+                return;
+            }
+
+            container.innerHTML = players.map(function(player, idx) {
+                return '<div class="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors">' +
+                    '<div class="flex items-center justify-between mb-2">' +
+                        '<div class="flex items-center gap-3">' +
+                            '<span class="bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">' + (idx + 1) + '</span>' +
+                            '<div>' +
+                                '<h3 class="font-semibold">' + player.name + '</h3>' +
+                                '<p class="text-sm text-gray-300">' + player.team + ' - ' + player.position + '</p>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="text-right">' +
+                            '<div class="text-lg font-bold text-green-400">' + player.recommendationScore + '</div>' +
+                            '<div class="text-xs text-gray-400">Score</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">' +
+                        '<div><span class="text-gray-400">Rating:</span> ' + player.rating + '</div>' +
+                        '<div><span class="text-gray-400">SOS Rank:</span> ' + player.sosRank + '</div>' +
+                        '<div><span class="text-gray-400">Playoff SOS:</span> ' + player.playoffSos + '</div>' +
+                        '<div><span class="text-gray-400">ADP:</span> ' + player.adp + '</div>' +
+                    '</div>' +
+                    '<div class="flex items-center justify-between">' +
+                        '<p class="text-sm text-blue-300">' + player.reason + '</p>' +
+                        '<button onclick="draftPlayer(' + player.id + ')" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">Draft Player</button>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        // Draft a player
+        function draftPlayer(playerId) {
+            const player = allPlayers.find(function(p) { return p.id === playerId; });
+            if (player && !myTeam.some(function(p) { return p.id === playerId; })) {
+                myTeam.push(player);
+                updateMyTeamDisplay();
+                generateRecommendations();
+            }
+        }
+
+        // Update my team display
+        function updateMyTeamDisplay() {
+            const container = document.getElementById('myTeamList');
+            const count = document.getElementById('teamCount');
+            
+            count.textContent = myTeam.length;
+            
+            if (myTeam.length === 0) {
+                container.innerHTML = '<p class="text-gray-300">No players drafted yet</p>';
+            } else {
+                container.innerHTML = myTeam.map(function(player) {
+                    return '<div class="flex justify-between items-center p-2 bg-green-500/20 rounded mb-2">' +
+                        '<span>' + player.name + '</span>' +
+                        '<span class="text-sm text-green-300">' + player.position + '</span>' +
+                    '</div>';
+                }).join('');
+            }
+        }
+
+        // Sync players
+        function syncPlayers() {
+            if (leagueData) {
+                loadPlayers();
+                alert('Players synced successfully!');
+            } else {
+                alert('Please connect to league first.');
+            }
+        }
+
+        // Initialize with demo data
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Yahoo Fantasy Draft Companion loaded');
+            loadDemoData();
+        });
     </script>
 </body>
 </html>
