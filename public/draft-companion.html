@@ -30,6 +30,13 @@
                     🔄 Sync Players
                 </button>
             </div>
+            
+            <!-- CSV Upload -->
+            <div class="mt-4 pt-4 border-t border-green-500/30">
+                <label for="csvUpload" class="block text-sm font-medium mb-2">Upload FantasyPros CSV (Optional)</label>
+                <input type="file" id="csvUpload" accept=".csv" onchange="handleCsvUpload(event)" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700"/>
+                <p class="text-xs text-green-200 mt-1">Upload your FantasyPros 2025 rankings CSV to get all 515 players instead of just 10 demo players</p>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -351,6 +358,81 @@
             } else {
                 alert('Please connect to league first.');
             }
+        }
+
+        // Handle CSV file upload
+        function handleCsvUpload(event) {
+            var file = event.target.files[0];
+            if (file && file.type === 'text/csv') {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var csvText = e.target.result;
+                    processCsvText(csvText);
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // Process uploaded CSV text
+        function processCsvText(csvText) {
+            try {
+                console.log('Processing uploaded FantasyPros CSV...');
+                
+                var lines = csvText.split('\n');
+                var headers = lines[0].split(',').map(function(h) { return h.trim().replace(/"/g, ''); });
+                console.log('CSV Headers:', headers);
+                
+                var fantasyProsData = [];
+                for (var i = 1; i < lines.length; i++) {
+                    if (lines[i].trim()) {
+                        var values = parseCsvLine(lines[i]);
+                        var player = {};
+                        
+                        for (var j = 0; j < headers.length; j++) {
+                            if (values[j] !== undefined) {
+                                player[headers[j]] = values[j].trim().replace(/"/g, '');
+                            }
+                        }
+                        
+                        // Only add players with valid data
+                        if (player['PLAYER NAME'] && player['TEAM'] && player['POS']) {
+                            fantasyProsData.push(player);
+                        }
+                    }
+                }
+                
+                console.log('Successfully parsed ' + fantasyProsData.length + ' players from CSV');
+                convertFantasyProsData(fantasyProsData);
+                
+                // Update UI
+                document.getElementById('connectionStatus').textContent = '✅ Loaded ' + fantasyProsData.length + ' FantasyPros 2025 Players';
+                
+            } catch (error) {
+                console.error('Error processing CSV:', error);
+                alert('Error processing CSV file. Please check the format and try again.');
+            }
+        }
+
+        // Simple CSV line parser that handles quoted fields
+        function parseCsvLine(line) {
+            var result = [];
+            var current = '';
+            var inQuotes = false;
+            
+            for (var i = 0; i < line.length; i++) {
+                var char = line[i];
+                
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current);
+            return result;
         }
 
         // Initialize app
