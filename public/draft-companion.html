@@ -524,6 +524,63 @@
             return result;
         }
 
+        // Convert FantasyPros data to our format
+        function convertFantasyProsData(fantasyProsData) {
+            console.log('Converting', fantasyProsData.length, 'FantasyPros players to app format...');
+            
+            allPlayers = [];
+            
+            for (var i = 0; i < fantasyProsData.length; i++) {
+                try {
+                    var fp = fantasyProsData[i];
+                    var team = fp['TEAM'] || 'FA';
+                    var position = fp['POS'] || 'FLEX';
+                    var playerName = fp['PLAYER NAME'] || 'Unknown Player';
+                    var rank = parseInt(fp['RK']) || (i + 1);
+                    
+                    // Calculate rating from ECR (higher rank = lower rating)
+                    var rating = Math.max(60, Math.min(99, 100 - (rank * 0.8)));
+                    
+                    // Parse SOS and other data
+                    var seasonSos = fp['SOS SEASON'] ? parseInt(fp['SOS SEASON']) : (Math.floor(Math.random() * 32) + 1);
+                    var playoffSos = Math.floor(Math.random() * 32) + 1;
+                    
+                    // Estimate ADP from ECR 
+                    var adp = rank * 0.12;
+                    
+                    // Calculate projected points based on position and rank
+                    var projected = 10;
+                    if (position === 'QB') projected = Math.max(15, 28 - (rank * 0.15));
+                    else if (position === 'RB') projected = Math.max(8, 22 - (rank * 0.12));  
+                    else if (position === 'WR') projected = Math.max(8, 20 - (rank * 0.10));
+                    else if (position === 'TE') projected = Math.max(6, 16 - (rank * 0.08));
+                    else if (position === 'DST') projected = Math.max(5, 12 - (rank * 0.05));
+                    else if (position === 'K') projected = Math.max(4, 10 - (rank * 0.03));
+                    
+                    allPlayers.push({
+                        id: i + 1,
+                        name: playerName,
+                        position: position,
+                        team: team,
+                        rating: Math.round(rating),
+                        sosRank: seasonSos,
+                        playoffSos: playoffSos,
+                        adp: Math.round(adp * 10) / 10,
+                        projected: Math.round(projected * 10) / 10,
+                        ecr: rank,
+                        upside: fp['UPSIDE '] || fp['UPSIDE'] || 'Medium',
+                        bust: fp['BUST '] || fp['BUST'] || 'Medium',
+                        tier: parseInt(fp['TIERS']) || Math.ceil(rank / 10)
+                    });
+                } catch (playerError) {
+                    console.log('Error converting player', i, ':', playerError.message);
+                }
+            }
+            
+            console.log('Successfully converted', allPlayers.length, 'players to app format');
+            generateRecommendations();
+        }
+
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Yahoo Fantasy Draft Companion loaded');
