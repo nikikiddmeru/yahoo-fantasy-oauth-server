@@ -373,35 +373,63 @@
             }
         }
 
-        // Process uploaded CSV text
+        // Process uploaded CSV text with better error handling
         function processCsvText(csvText) {
             try {
                 console.log('Processing uploaded FantasyPros CSV...');
+                console.log('CSV length:', csvText.length);
+                console.log('First 200 characters:', csvText.substring(0, 200));
                 
                 var lines = csvText.split('\n');
-                var headers = lines[0].split(',').map(function(h) { return h.trim().replace(/"/g, ''); });
-                console.log('CSV Headers:', headers);
+                console.log('Total lines:', lines.length);
+                
+                if (lines.length < 2) {
+                    throw new Error('CSV appears to be empty or has only headers');
+                }
+                
+                // Parse headers - handle potential BOM and quotes
+                var headerLine = lines[0].replace(/^\uFEFF/, ''); // Remove BOM if present
+                var headers = parseSimpleCsvLine(headerLine);
+                console.log('Parsed headers:', headers);
                 
                 var fantasyProsData = [];
-                for (var i = 1; i < lines.length; i++) {
+                var errorCount = 0;
+                
+                for (var i = 1; i < lines.length && i < 600; i++) { // Limit to 600 lines to prevent browser hang
                     if (lines[i].trim()) {
-                        var values = parseCsvLine(lines[i]);
-                        var player = {};
-                        
-                        for (var j = 0; j < headers.length; j++) {
-                            if (values[j] !== undefined) {
-                                player[headers[j]] = values[j].trim().replace(/"/g, '');
+                        try {
+                            var values = parseSimpleCsvLine(lines[i]);
+                            if (values.length >= headers.length - 2) { // Allow some missing columns
+                                var player = {};
+                                
+                                for (var j = 0; j < Math.min(headers.length, values.length); j++) {
+                                    var header = headers[j];
+                                    var value = values[j] || '';
+                                    player[header] = value.trim();
+                                }
+                                
+                                // Only add players with essential data
+                                if (player['PLAYER NAME'] && player['PLAYER NAME'].length > 1 && 
+                                    player['POS'] && player['TEAM']) {
+                                    fantasyProsData.push(player);
+                                }
                             }
-                        }
-                        
-                        // Only add players with valid data
-                        if (player['PLAYER NAME'] && player['TEAM'] && player['POS']) {
-                            fantasyProsData.push(player);
+                        } catch (lineError) {
+                            errorCount++;
+                            if (errorCount < 5) {
+                                console.log('Error parsing line', i, ':', lineError.message);
+                            }
                         }
                     }
                 }
                 
                 console.log('Successfully parsed ' + fantasyProsData.length + ' players from CSV');
+                console.log('Parsing errors:', errorCount);
+                
+                if (fantasyProsData.length === 0) {
+                    throw new Error('No valid player data found in CSV');
+                }
+                
                 convertFantasyProsData(fantasyProsData);
                 
                 // Update UI
@@ -409,12 +437,13 @@
                 
             } catch (error) {
                 console.error('Error processing CSV:', error);
-                alert('Error processing CSV file. Please check the format and try again.');
+                alert('Error processing CSV: ' + error.message + '. Using demo data instead. Check console for details.');
+                loadDemoData();
             }
         }
 
-        // Simple CSV line parser that handles quoted fields
-        function parseCsvLine(line) {
+        // Simpler CSV parser that handles most cases
+        function parseSimpleCsvLine(line) {
             var result = [];
             var current = '';
             var inQuotes = false;
@@ -423,7 +452,13 @@
                 var char = line[i];
                 
                 if (char === '"') {
-                    inQuotes = !inQuotes;
+                    if (inQuotes && line[i + 1] === '"') {
+                        // Handle escaped quotes
+                        current += '"';
+                        i++; // Skip next quote
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
                 } else if (char === ',' && !inQuotes) {
                     result.push(current);
                     current = '';
@@ -431,7 +466,14 @@
                     current += char;
                 }
             }
+            
             result.push(current);
+            
+            // Clean up the results
+            for (var j = 0; j < result.length; j++) {
+                result[j] = result[j].trim().replace(/^"(.*)"$/, '$1');
+            }
+            
             return result;
         }
 
