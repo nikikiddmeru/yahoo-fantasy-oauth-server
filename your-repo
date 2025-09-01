@@ -1,0 +1,8 @@
+your-repo/
+├── api/
+│   ├── auth/
+│   │   └── yahoo-callback.js    # OAuth callback handler
+│   ├── yahoo-proxy.js           # API proxy for Yahoo calls
+│   └── start-auth.js            # Initiate OAuth flow
+├── package.json                 # Dependencies
+└── vercel.json                  # Vercel configuration
