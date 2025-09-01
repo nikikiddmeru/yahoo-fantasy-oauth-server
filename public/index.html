@@ -44,6 +44,14 @@
             background: #16a34a; 
             transform: translateY(-2px);
         }
+        .button.primary {
+            background: #3b82f6;
+            font-size: 18px;
+            padding: 20px 40px;
+        }
+        .button.primary:hover {
+            background: #2563eb;
+        }
         .endpoints {
             background: rgba(0,0,0,0.2);
             padding: 20px;
@@ -61,12 +69,17 @@
 <body>
     <div class="container">
         <h1>🏈 Yahoo Fantasy OAuth Server</h1>
-        <p>Server is running successfully! This handles Yahoo Fantasy Sports API authentication.</p>
+        <p>Your Yahoo Fantasy Sports API server is running successfully!</p>
         
-        <a href="/api/start-auth" class="button">Start Yahoo OAuth Flow</a>
+        <a href="/draft-companion.html" class="button primary">🚀 Launch Draft Companion</a>
+        
+        <div style="margin: 30px 0;">
+            <a href="/api/start-auth" class="button">Start Yahoo OAuth Flow</a>
+        </div>
         
         <div class="endpoints">
             <h3>Available Endpoints:</h3>
+            <div class="endpoint"><strong>GET</strong> /draft-companion.html - Draft Companion App</div>
             <div class="endpoint"><strong>GET</strong> /api/start-auth - Start Yahoo OAuth</div>
             <div class="endpoint"><strong>GET</strong> /api/auth/yahoo-callback - OAuth callback</div>
             <div class="endpoint"><strong>GET</strong> /api/yahoo-proxy?endpoint=... - Proxy Yahoo API calls</div>
@@ -74,7 +87,7 @@
         
         <p style="font-size: 14px; margin-top: 30px;">
             Configured for League ID: <strong>268821</strong><br>
-            Ready for Claude Fantasy Draft Companion integration
+            Ready with live Yahoo Fantasy API integration
         </p>
     </div>
 </body>
