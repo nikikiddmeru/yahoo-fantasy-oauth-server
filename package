@@ -1,0 +1,16 @@
+{
+  "name": "yahoo-fantasy-oauth-server",
+  "version": "1.0.0",
+  "description": "OAuth server for Yahoo Fantasy Sports API",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step required for serverless functions'"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}
