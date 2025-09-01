@@ -15,13 +15,11 @@
 </head>
 <body class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
     <div class="container mx-auto px-4 py-8">
-        <!-- Header -->
         <div class="text-center mb-8">
             <h1 class="text-4xl font-bold mb-2">Yahoo Fantasy Draft Companion</h1>
             <p class="text-purple-200">League ID: 268821 | 14 Teams | SuperFlex</p>
         </div>
 
-        <!-- Connection Status -->
         <div class="bg-green-500/20 border border-green-500/50 rounded-lg p-4 mb-8">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -34,11 +32,8 @@
             </div>
         </div>
 
-        <!-- Main Dashboard -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column - Controls & Team Status -->
             <div class="space-y-6">
-                <!-- League Status -->
                 <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
                     <div class="flex items-center gap-3 mb-4">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,7 +48,6 @@
                     </div>
                 </div>
 
-                <!-- My Team -->
                 <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
                     <div class="flex items-center gap-3 mb-4">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,7 +60,6 @@
                     </div>
                 </div>
 
-                <!-- Position Filter -->
                 <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
                     <h3 class="font-semibold mb-3">Filter by Position</h3>
                     <select id="positionFilter" onchange="filterRecommendations()" class="w-full bg-black/30 border border-gray-600 rounded-lg px-3 py-2">
@@ -80,7 +73,6 @@
                 </div>
             </div>
 
-            <!-- Right Columns - Player Recommendations -->
             <div class="lg:col-span-2">
                 <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
                     <div class="flex items-center gap-3 mb-6">
@@ -89,7 +81,6 @@
                         </svg>
                         <h2 class="text-xl font-semibold">Recommended Picks</h2>
                     </div>
-                    
                     <div id="recommendationsList" class="space-y-4">
                         <div class="text-center py-8 text-gray-400">
                             Loading recommendations...
@@ -101,125 +92,81 @@
     </div>
 
     <script>
-        // App state
-        let leagueData = null;
-        let myTeam = [];
-        let draftPicks = [];
-        let allPlayers = [];
-        let recommendations = [];
-        let loading = false;
+        // Global variables
+        var leagueData = null;
+        var myTeam = [];
+        var draftPicks = [];
+        var allPlayers = [];
+        var recommendations = [];
+        var loading = false;
 
         // Your access token
-        const ACCESS_TOKEN = '3Al3qWOd7lzB8IrP.iT.9EG7FxXOQ1Pgc2WItaH2j9ip73X_EUo0By5hly5zIljtXHqHW0shpBAHM7oQpVvYpOp7xyycB7rmEDgsMXdIEIfTJZTjq69r8597b3karfCMeURok0B1vqdAW3NT1QEFXrd4ftqJiAEfv06QZ4b6O4FAAi3TG1hW6A1RsB3C_KXC.KpZJXT5wXxWcF4Yv9vqc5xxbOl.xCOshG4sQzoteCS0qDwGPzVEyFSaeQitOFhy4uK3PcIwsbXdG9WTEoCImmL_J_Pn1dxM2.gnTematlGFPPx7pKyrhR8n1TnWYNC1rV47ExtJf3Lip3vjwMuVbiQoBHQo1ED3sSprhXXQst_ZrdWpwoGejAuaOz6pEcdrwTIsltMX3IyGoY8e_ooIcrRU81i6_v2MUAIZeWsat5McCxXfJa9uIj9Jf3I.QHc19sBunb4R6p.BZy2M2Rs6jP1soP_Efbtwgi_AJCXhaiSp4cpgafn9Rm6hNwOrAy7TLBMdVP9hhJysAH6jtYXpA6ria3U8ec0d5ByUImAeqy_JKqn5jZrwlGf34_kni1oF2im.4Iw7WH_hBmxCdqjAmH3Bk9GWuZ4zDxb9y3GCt9iSyPsqyJDPJC0wRIy_K4TxAwFMS_.4M8xnmQVtHXdUAHOlSlcliJ95Qn5pQfJygMmPGExzHfOQ5KeOIbzn1NXsxBIw0Q_cfh5tCVGOBcb.0.GGOejbwrimNY1pQduSgd_KQ7JvcTPeMReh.FS4E.sA4h0wAc6czjgJetrImncvWCrKwlRdUYsndQEM77cpI28xABhpWBDQs8ym542nCbdXWkp8MLwKVgNzDQ24gMtbEuteVTWg_QV8X4ruR2iB6eZuMiE.OrRzYmkHE80B0eo0MSp2Xd33mU9I7.clo.38thoKEX4YIw9sUErCoA--';
+        var ACCESS_TOKEN = '3Al3qWOd7lzB8IrP.iT.9EG7FxXOQ1Pgc2WItaH2j9ip73X_EUo0By5hly5zIljtXHqHW0shpBAHM7oQpVvYpOp7xyycB7rmEDgsMXdIEIfTJZTjq69r8597b3karfCMeURok0B1vqdAW3NT1QEFXrd4ftqJiAEfv06QZ4b6O4FAAi3TG1hW6A1RsB3C_KXC.KpZJXT5wXxWcF4Yv9vqc5xxbOl.xCOshG4sQzoteCS0qDwGPzVEyFSaeQitOFhy4uK3PcIwsbXdG9WTEoCImmL_J_Pn1dxM2.gnTematlGFPPx7pKyrhR8n1TnWYNC1rV47ExtJf3Lip3vjwMuVbiQoBHQo1ED3sSprhXXQst_ZrdWpwoGejAuaOz6pEcdrwTIsltMX3IyGoY8e_ooIcrRU81i6_v2MUAIZeWsat5McCxXfJa9uIj9Jf3I.QHc19sBunb4R6p.BZy2M2Rs6jP1soP_Efbtwgi_AJCXhaiSp4cpgafn9Rm6hNwOrAy7TLBMdVP9hhJysAH6jtYXpA6ria3U8ec0d5ByUImAeqy_JKqn5jZrwlGf34_kni1oF2im.4Iw7WH_hBmxCdqjAmH3Bk9GWuZ4zDxb9y3GCt9iSyPsqyJDPJC0wRIy_K4TxAwFMS_.4M8xnmQVtHXdUAHOlSlcliJ95Qn5pQfJygMmPGExzHfOQ5KeOIbzn1NXsxBIw0Q_cfh5tCVGOBcb.0.GGOejbwrimNY1pQduSgd_KQ7JvcTPeMReh.FS4E.sA4h0wAc6czjgJetrImncvWCrKwlRdUYsndQEM77cpI28xABhpWBDQs8ym542nCbdXWkp8MLwKVgNzDQ24gMtbEuteVTWg_QV8X4ruR2iB6eZuMiE.OrRzYmkHE80B0eo0MSp2Xd33mU9I7.clo.38thoKEX4YIw9sUErCoA--';
 
         // League configuration
-        const LEAGUE_CONFIG = {
+        var LEAGUE_CONFIG = {
             id: '268821',
             teams: 14,
             positions: { QB: 1, WR: 2, RB: 2, TE: 1, FLEX: 1, SUPERFLEX: 1, DEF: 1, BENCH: 5 },
             playoffWeeks: [15, 16, 17]
         };
 
-        // Real 2025 SOS data by team and position
-        const sosData = {
-            'ARI': { QB: 14, RB: 1, WR: 2, TE: 2 },
-            'ATL': { QB: 10, RB: 1, WR: 7, TE: 7 },
-            'BAL': { QB: 25, RB: 28, WR: 19, TE: 3 },
-            'BUF': { QB: 19, RB: 22, WR: 15, TE: 5 },
-            'CAR': { QB: 6, RB: 6, WR: 21, TE: 8 },
-            'CHI': { QB: 26, RB: 24, WR: 13, TE: 21 },
-            'CIN': { QB: 30, RB: 18, WR: 20, TE: 22 },
-            'CLE': { QB: 29, RB: 13, WR: 31, TE: 16 },
-            'DAL': { QB: 31, RB: 25, WR: 32, TE: 32 },
-            'DEN': { QB: 13, RB: 31, WR: 29, TE: 17 },
-            'DET': { QB: 28, RB: 32, WR: 17, TE: 11 },
-            'GB': { QB: 23, RB: 14, WR: 21, TE: 27 },
-            'HOU': { QB: 21, RB: 21, WR: 8, TE: 14 },
-            'IND': { QB: 16, RB: 15, WR: 26, TE: 19 },
-            'JAX': { QB: 11, RB: 16, WR: 28, TE: 13 },
-            'KC': { QB: 12, RB: 20, WR: 16, TE: 31 },
-            'LV': { QB: 22, RB: 23, WR: 23, TE: 29 },
-            'LAC': { QB: 21, RB: 29, WR: 27, TE: 8 },
-            'LAR': { QB: 7, RB: 11, WR: 11, TE: 23 },
-            'MIA': { QB: 9, RB: 9, WR: 4, TE: 10 },
-            'MIN': { QB: 27, RB: 26, WR: 25, TE: 26 },
-            'NE': { QB: 15, RB: 8, WR: 22, TE: 9 },
-            'NO': { QB: 5, RB: 2, WR: 24, TE: 20 },
-            'NYG': { QB: 32, RB: 27, WR: 30, TE: 30 },
-            'NYJ': { QB: 3, RB: 3, WR: 1, TE: 1 },
-            'PHI': { QB: 17, RB: 19, WR: 10, TE: 25 },
-            'PIT': { QB: 20, RB: 2, WR: 18, TE: 15 },
-            'SF': { QB: 4, RB: 5, WR: 3, TE: 12 },
-            'SEA': { QB: 8, RB: 7, WR: 6, TE: 4 },
-            'TB': { QB: 18, RB: 10, WR: 9, TE: 24 },
-            'TEN': { QB: 1, RB: 4, WR: 17, TE: 5 },
-            'WAS': { QB: 24, RB: 30, WR: 14, TE: 28 }
-        };
-
-        // Mock players with real 2025 SOS data
-        const mockPlayers = [
-            { id: 1, name: 'Josh Allen', position: 'QB', team: 'BUF', rating: 95, sosRank: 19, playoffSos: 5, adp: 1.2, projected: 24.5 },
-            { id: 2, name: 'Lamar Jackson', position: 'QB', team: 'BAL', rating: 93, sosRank: 25, playoffSos: 3, adp: 1.8, projected: 23.8 },
-            { id: 3, name: 'Justin Jefferson', position: 'WR', team: 'MIN', rating: 98, sosRank: 25, playoffSos: 8, adp: 0.8, projected: 19.2 },
-            { id: 4, name: 'Cooper Kupp', position: 'WR', team: 'SEA', rating: 88, sosRank: 6, playoffSos: 12, adp: 4.8, projected: 16.2 },
-            { id: 5, name: 'Christian McCaffrey', position: 'RB', team: 'SF', rating: 96, sosRank: 5, playoffSos: 6, adp: 0.5, projected: 20.1 },
-            { id: 6, name: 'Austin Ekeler', position: 'RB', team: 'WAS', rating: 78, sosRank: 30, playoffSos: 20, adp: 8.3, projected: 12.4 },
-            { id: 7, name: 'Travis Kelce', position: 'TE', team: 'KC', rating: 95, sosRank: 31, playoffSos: 4, adp: 2.8, projected: 16.2 },
-            { id: 8, name: 'Mark Andrews', position: 'TE', team: 'BAL', rating: 89, sosRank: 3, playoffSos: 9, adp: 3.2, projected: 14.5 },
-            { id: 9, name: 'Stefon Diggs', position: 'WR', team: 'HOU', rating: 92, sosRank: 8, playoffSos: 7, adp: 2.3, projected: 17.1 },
-            { id: 10, name: 'Saquon Barkley', position: 'RB', team: 'PHI', rating: 88, sosRank: 19, playoffSos: 12, adp: 3.8, projected: 16.4 }
+        // Enhanced mock data
+        var mockPlayers = [
+            { id: 1, name: 'Josh Allen', position: 'QB', team: 'BUF', rating: 99, sosRank: 19, playoffSos: 5, adp: 1.2, projected: 24.5, ecr: 1, upside: 'High', bust: 'Low', tier: 1 },
+            { id: 2, name: 'Lamar Jackson', position: 'QB', team: 'BAL', rating: 96, sosRank: 25, playoffSos: 3, adp: 1.8, projected: 23.8, ecr: 2, upside: 'High', bust: 'Medium', tier: 1 },
+            { id: 3, name: 'Justin Jefferson', position: 'WR', team: 'MIN', rating: 98, sosRank: 25, playoffSos: 8, adp: 0.8, projected: 19.2, ecr: 1, upside: 'High', bust: 'Low', tier: 1 },
+            { id: 4, name: 'Cooper Kupp', position: 'WR', team: 'SEA', rating: 85, sosRank: 6, playoffSos: 12, adp: 4.8, projected: 16.2, ecr: 40, upside: 'Medium', bust: 'High', tier: 4 },
+            { id: 5, name: 'Christian McCaffrey', position: 'RB', team: 'SF', rating: 97, sosRank: 5, playoffSos: 6, adp: 0.5, projected: 20.1, ecr: 1, upside: 'High', bust: 'Medium', tier: 1 },
+            { id: 6, name: 'Austin Ekeler', position: 'RB', team: 'WAS', rating: 76, sosRank: 30, playoffSos: 20, adp: 8.3, projected: 12.4, ecr: 80, upside: 'Low', bust: 'High', tier: 8 },
+            { id: 7, name: 'Travis Kelce', position: 'TE', team: 'KC', rating: 94, sosRank: 31, playoffSos: 4, adp: 2.8, projected: 16.2, ecr: 8, upside: 'Medium', bust: 'Medium', tier: 1 },
+            { id: 8, name: 'Mark Andrews', position: 'TE', team: 'BAL', rating: 88, sosRank: 3, playoffSos: 9, adp: 3.2, projected: 14.5, ecr: 15, upside: 'Medium', bust: 'Medium', tier: 2 },
+            { id: 9, name: 'Stefon Diggs', position: 'WR', team: 'HOU', rating: 91, sosRank: 8, playoffSos: 7, adp: 2.3, projected: 17.1, ecr: 12, upside: 'Medium', bust: 'Low', tier: 2 },
+            { id: 10, name: 'Saquon Barkley', position: 'RB', team: 'PHI', rating: 87, sosRank: 19, playoffSos: 12, adp: 3.8, projected: 16.4, ecr: 25, upside: 'High', bust: 'Medium', tier: 3 }
         ];
 
         // Connect to league
-        async function connectLeague() {
-            const btn = document.getElementById('connectBtn');
-            const originalText = btn.textContent;
+        function connectLeague() {
+            var btn = document.getElementById('connectBtn');
+            var originalText = btn.textContent;
             
             btn.textContent = 'Connecting...';
             btn.disabled = true;
             loading = true;
 
-            try {
-                console.log('Connecting to Yahoo Fantasy League...');
-                
-                const response = await fetch('/api/yahoo-proxy?endpoint=league/nfl.l.' + LEAGUE_CONFIG.id, {
-                    headers: {
-                        'Authorization': 'Bearer ' + ACCESS_TOKEN
-                    }
-                });
-
+            fetch('/api/yahoo-proxy?endpoint=league/nfl.l.' + LEAGUE_CONFIG.id, {
+                headers: {
+                    'Authorization': 'Bearer ' + ACCESS_TOKEN
+                }
+            }).then(function(response) {
                 if (response.ok) {
-                    const data = await response.json();
-                    console.log('League data received:', data);
-                    
-                    const league = data.fantasy_content.league[0];
-                    leagueData = {
-                        name: league.name,
-                        size: league.num_teams,
-                        draftStatus: league.draft_status,
-                        currentPick: league.current_weekly_period || 1,
-                        season: league.season
-                    };
-                    
-                    updateLeagueDisplay();
-                    await fetchDraftResults();
-                    loadPlayers();
-                    
+                    return response.json();
                 } else {
-                    const errorData = await response.json();
-                    console.error('API Error:', errorData);
                     throw new Error('API call failed: ' + response.status);
                 }
+            }).then(function(data) {
+                console.log('League data received:', data);
                 
-            } catch (error) {
+                var league = data.fantasy_content.league[0];
+                leagueData = {
+                    name: league.name,
+                    size: league.num_teams,
+                    draftStatus: league.draft_status,
+                    currentPick: league.current_weekly_period || 1,
+                    season: league.season
+                };
+                
+                updateLeagueDisplay();
+                generateRecommendations();
+            }).catch(function(error) {
                 console.error('Connection failed:', error);
                 alert('Connection failed: ' + error.message + '. Loading demo data instead.');
                 loadDemoData();
-            }
-
-            btn.textContent = originalText;
-            btn.disabled = false;
-            loading = false;
+            }).finally(function() {
+                btn.textContent = originalText;
+                btn.disabled = false;
+                loading = false;
+            });
         }
 
         // Load demo data
@@ -229,7 +176,7 @@
                 size: 14,
                 draftStatus: 'in_progress',
                 currentPick: Math.floor(Math.random() * 50) + 1,
-                season: '2024'
+                season: '2025'
             };
             
             allPlayers = mockPlayers.slice();
@@ -251,85 +198,32 @@
             }
         }
 
-        // Fetch draft results
-        async function fetchDraftResults() {
-            try {
-                const response = await fetch('/api/yahoo-proxy?endpoint=league/nfl.l.' + LEAGUE_CONFIG.id + '/draftresults', {
-                    headers: {
-                        'Authorization': 'Bearer ' + ACCESS_TOKEN
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const picks = data.fantasy_content.league[1] ? data.fantasy_content.league[1].draft_results || [] : [];
-                    draftPicks = picks.map(function(pick) {
-                        const result = pick.draft_result;
-                        return {
-                            playerId: result.player_key,
-                            playerName: result.player_name,
-                            teamId: result.team_key,
-                            pick: result.pick,
-                            round: result.round
-                        };
-                    });
-                    console.log('Draft picks loaded:', draftPicks.length);
-                }
-            } catch (error) {
-                console.error('Failed to fetch draft results:', error);
-            }
-        }
-
-        // Load players
-        function loadPlayers() {
-            allPlayers = mockPlayers.map(function(player) {
-                return {
-                    id: player.id,
-                    name: player.name,
-                    position: player.position,
-                    team: player.team,
-                    rating: player.rating,
-                    sosRank: player.sosRank,
-                    playoffSos: player.playoffSos,
-                    adp: player.adp,
-                    projected: player.projected,
-                    isDrafted: draftPicks.some(function(pick) { return pick.playerName === player.name; })
-                };
-            });
-            
-            generateRecommendations();
-        }
-
         // Generate recommendations
         function generateRecommendations() {
-            const availablePlayers = allPlayers.filter(function(player) {
-                return !draftPicks.some(function(pick) { return pick.playerName === player.name; }) &&
-                       !myTeam.some(function(teamPlayer) { return teamPlayer.id === player.id; });
+            var availablePlayers = allPlayers.filter(function(player) {
+                return !myTeam.some(function(teamPlayer) { return teamPlayer.id === player.id; });
             });
 
-            // Calculate team needs
-            const needs = Object.assign({}, LEAGUE_CONFIG.positions);
+            var needs = Object.assign({}, LEAGUE_CONFIG.positions);
             myTeam.forEach(function(player) {
                 if (needs[player.position] > 0) {
                     needs[player.position]--;
                 }
             });
 
-            // Score players
             recommendations = availablePlayers.map(function(player) {
-                let score = 0;
+                var score = 0;
                 score += (player.rating / 100) * 40;
                 score += (32 - player.sosRank) / 32 * 20;
                 score += (32 - player.playoffSos) / 32 * 20;
                 
-                const positionNeed = needs[player.position] > 0 ? 1 : 0.2;
+                var positionNeed = needs[player.position] > 0 ? 1 : 0.2;
                 score += positionNeed * 15;
                 
-                const competitionLevel = Math.floor(Math.random() * 5);
+                var competitionLevel = Math.floor(Math.random() * 5);
                 score += Math.max(0, (5 - competitionLevel)) * 1;
 
-                // Generate reason
-                const reasons = [];
+                var reasons = [];
                 if (player.rating >= 90) reasons.push('Elite talent');
                 if (player.playoffSos <= 5) reasons.push('Easy playoff schedule');
                 if (needs[player.position] > 0) reasons.push('Fills positional need');
@@ -345,6 +239,10 @@
                     playoffSos: player.playoffSos,
                     adp: player.adp,
                     projected: player.projected,
+                    ecr: player.ecr,
+                    upside: player.upside,
+                    bust: player.bust,
+                    tier: player.tier,
                     recommendationScore: Math.round(score * 10) / 10,
                     reason: reasons.length > 0 ? reasons.join(', ') : 'Solid value pick'
                 };
@@ -354,10 +252,10 @@
             filterRecommendations();
         }
 
-        // Filter recommendations by position
+        // Filter recommendations
         function filterRecommendations() {
-            const selectedPosition = document.getElementById('positionFilter').value;
-            const filtered = selectedPosition === 'ALL' 
+            var selectedPosition = document.getElementById('positionFilter').value;
+            var filtered = selectedPosition === 'ALL' 
                 ? recommendations 
                 : recommendations.filter(function(p) { return p.position === selectedPosition; });
 
@@ -366,21 +264,26 @@
 
         // Display recommendations
         function displayRecommendations(players) {
-            const container = document.getElementById('recommendationsList');
+            var container = document.getElementById('recommendationsList');
             
             if (players.length === 0) {
                 container.innerHTML = '<div class="text-center py-8 text-gray-400">No recommendations available</div>';
                 return;
             }
 
-            container.innerHTML = players.map(function(player, idx) {
-                return '<div class="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors">' +
+            var html = '';
+            for (var i = 0; i < players.length; i++) {
+                var player = players[i];
+                var upsideColor = player.upside === 'High' ? 'text-green-400' : player.upside === 'Low' ? 'text-red-400' : 'text-yellow-400';
+                var bustColor = player.bust === 'High' ? 'text-red-400' : player.bust === 'Low' ? 'text-green-400' : 'text-yellow-400';
+                
+                html += '<div class="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors">' +
                     '<div class="flex items-center justify-between mb-2">' +
                         '<div class="flex items-center gap-3">' +
-                            '<span class="bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">' + (idx + 1) + '</span>' +
+                            '<span class="bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">' + (i + 1) + '</span>' +
                             '<div>' +
                                 '<h3 class="font-semibold">' + player.name + '</h3>' +
-                                '<p class="text-sm text-gray-300">' + player.team + ' - ' + player.position + '</p>' +
+                                '<p class="text-sm text-gray-300">' + player.team + ' - ' + player.position + ' (ECR: ' + (player.ecr || 'N/A') + ', Tier ' + (player.tier || 'N/A') + ')</p>' +
                             '</div>' +
                         '</div>' +
                         '<div class="text-right">' +
@@ -394,17 +297,23 @@
                         '<div><span class="text-gray-400">Playoff SOS:</span> ' + player.playoffSos + '</div>' +
                         '<div><span class="text-gray-400">ADP:</span> ' + player.adp + '</div>' +
                     '</div>' +
+                    '<div class="grid grid-cols-2 gap-4 text-xs mb-3">' +
+                        '<div><span class="text-gray-400">Upside:</span> <span class="' + upsideColor + '">' + (player.upside || 'Medium') + '</span></div>' +
+                        '<div><span class="text-gray-400">Bust Risk:</span> <span class="' + bustColor + '">' + (player.bust || 'Medium') + '</span></div>' +
+                    '</div>' +
                     '<div class="flex items-center justify-between">' +
                         '<p class="text-sm text-blue-300">' + player.reason + '</p>' +
                         '<button onclick="draftPlayer(' + player.id + ')" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">Draft Player</button>' +
                     '</div>' +
                 '</div>';
-            }).join('');
+            }
+            
+            container.innerHTML = html;
         }
 
         // Draft a player
         function draftPlayer(playerId) {
-            const player = allPlayers.find(function(p) { return p.id === playerId; });
+            var player = allPlayers.find(function(p) { return p.id === playerId; });
             if (player && !myTeam.some(function(p) { return p.id === playerId; })) {
                 myTeam.push(player);
                 updateMyTeamDisplay();
@@ -414,34 +323,37 @@
 
         // Update my team display
         function updateMyTeamDisplay() {
-            const container = document.getElementById('myTeamList');
-            const count = document.getElementById('teamCount');
+            var container = document.getElementById('myTeamList');
+            var count = document.getElementById('teamCount');
             
             count.textContent = myTeam.length;
             
             if (myTeam.length === 0) {
                 container.innerHTML = '<p class="text-gray-300">No players drafted yet</p>';
             } else {
-                container.innerHTML = myTeam.map(function(player) {
-                    return '<div class="flex justify-between items-center p-2 bg-green-500/20 rounded mb-2">' +
+                var html = '';
+                for (var i = 0; i < myTeam.length; i++) {
+                    var player = myTeam[i];
+                    html += '<div class="flex justify-between items-center p-2 bg-green-500/20 rounded mb-2">' +
                         '<span>' + player.name + '</span>' +
                         '<span class="text-sm text-green-300">' + player.position + '</span>' +
                     '</div>';
-                }).join('');
+                }
+                container.innerHTML = html;
             }
         }
 
         // Sync players
         function syncPlayers() {
             if (leagueData) {
-                loadPlayers();
+                generateRecommendations();
                 alert('Players synced successfully!');
             } else {
                 alert('Please connect to league first.');
             }
         }
 
-        // Initialize with demo data
+        // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Yahoo Fantasy Draft Companion loaded');
             loadDemoData();
