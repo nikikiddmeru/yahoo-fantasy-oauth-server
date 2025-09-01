@@ -373,71 +373,118 @@
             }
         }
 
-        // Process uploaded CSV text with better error handling
+        // Process uploaded CSV text with comprehensive error handling
         function processCsvText(csvText) {
             try {
-                console.log('Processing uploaded FantasyPros CSV...');
+                console.log('=== CSV PROCESSING START ===');
                 console.log('CSV length:', csvText.length);
-                console.log('First 200 characters:', csvText.substring(0, 200));
+                console.log('First 500 characters:');
+                console.log(csvText.substring(0, 500));
                 
-                var lines = csvText.split('\n');
-                console.log('Total lines:', lines.length);
-                
-                if (lines.length < 2) {
-                    throw new Error('CSV appears to be empty or has only headers');
+                if (!csvText || csvText.length < 50) {
+                    throw new Error('CSV appears to be empty or too short');
                 }
                 
-                // Parse headers - handle potential BOM and quotes
-                var headerLine = lines[0].replace(/^\uFEFF/, ''); // Remove BOM if present
-                var headers = parseSimpleCsvLine(headerLine);
-                console.log('Parsed headers:', headers);
+                var lines = csvText.split('\n');
+                console.log('Total lines found:', lines.length);
+                console.log('First line (headers):', lines[0]);
+                console.log('Second line (sample data):', lines[1]);
+                
+                if (lines.length < 2) {
+                    throw new Error('CSV appears to have no data rows');
+                }
+                
+                // Parse headers with extra safety
+                var headerLine = lines[0];
+                if (headerLine.charCodeAt(0) === 0xFEFF) {
+                    headerLine = headerLine.substring(1); // Remove BOM
+                }
+                
+                var headers;
+                try {
+                    headers = headerLine.split(',').map(function(h) {
+                        return h.trim().replace(/^"(.*)"$/, '$1').replace(/"/g, '');
+                    });
+                    console.log('Parsed headers:', headers);
+                } catch (headerError) {
+                    console.error('Header parsing error:', headerError);
+                    throw new Error('Failed to parse CSV headers');
+                }
                 
                 var fantasyProsData = [];
+                var successCount = 0;
                 var errorCount = 0;
                 
-                for (var i = 1; i < lines.length && i < 600; i++) { // Limit to 600 lines to prevent browser hang
-                    if (lines[i].trim()) {
-                        try {
-                            var values = parseSimpleCsvLine(lines[i]);
-                            if (values.length >= headers.length - 2) { // Allow some missing columns
-                                var player = {};
-                                
-                                for (var j = 0; j < Math.min(headers.length, values.length); j++) {
-                                    var header = headers[j];
+                // Process data rows with individual error handling
+                for (var i = 1; i < Math.min(lines.length, 520); i++) {
+                    try {
+                        var line = lines[i].trim();
+                        if (!line) continue;
+                        
+                        // Simple split for now, can enhance later
+                        var values = line.split(',').map(function(v) {
+                            return v.trim().replace(/^"(.*)"$/, '$1');
+                        });
+                        
+                        if (values.length >= 3) { // At least rank, name, team
+                            var player = {};
+                            
+                            // Map values to headers safely
+                            for (var j = 0; j < Math.min(headers.length, values.length); j++) {
+                                try {
+                                    var header = headers[j] || 'UNKNOWN_' + j;
                                     var value = values[j] || '';
-                                    player[header] = value.trim();
+                                    player[header] = value;
+                                } catch (mappingError) {
+                                    console.log('Mapping error for row', i, 'column', j, ':', mappingError);
                                 }
+                            }
+                            
+                            // Check if we have essential data
+                            var playerName = player['PLAYER NAME'] || player['Player Name'] || player['NAME'] || '';
+                            var team = player['TEAM'] || player['Team'] || '';
+                            var position = player['POS'] || player['Position'] || '';
+                            
+                            if (playerName.length > 1 && team && position) {
+                                // Normalize the player object
+                                player['PLAYER NAME'] = playerName;
+                                player['TEAM'] = team;
+                                player['POS'] = position;
                                 
-                                // Only add players with essential data
-                                if (player['PLAYER NAME'] && player['PLAYER NAME'].length > 1 && 
-                                    player['POS'] && player['TEAM']) {
-                                    fantasyProsData.push(player);
-                                }
+                                fantasyProsData.push(player);
+                                successCount++;
                             }
-                        } catch (lineError) {
-                            errorCount++;
-                            if (errorCount < 5) {
-                                console.log('Error parsing line', i, ':', lineError.message);
-                            }
+                        }
+                        
+                    } catch (rowError) {
+                        errorCount++;
+                        if (errorCount <= 5) {
+                            console.log('Row', i, 'error:', rowError.message);
                         }
                     }
                 }
                 
-                console.log('Successfully parsed ' + fantasyProsData.length + ' players from CSV');
-                console.log('Parsing errors:', errorCount);
+                console.log('Processing complete:');
+                console.log('- Successfully parsed:', successCount, 'players');
+                console.log('- Errors encountered:', errorCount);
                 
-                if (fantasyProsData.length === 0) {
-                    throw new Error('No valid player data found in CSV');
+                if (successCount === 0) {
+                    throw new Error('No valid players found in CSV. Check column names and data format.');
                 }
                 
+                // Convert to our format
+                console.log('Converting to app format...');
                 convertFantasyProsData(fantasyProsData);
                 
                 // Update UI
-                document.getElementById('connectionStatus').textContent = '✅ Loaded ' + fantasyProsData.length + ' FantasyPros 2025 Players';
+                document.getElementById('connectionStatus').textContent = '✅ Loaded ' + successCount + ' FantasyPros 2025 Players';
+                console.log('=== CSV PROCESSING SUCCESS ===');
                 
             } catch (error) {
-                console.error('Error processing CSV:', error);
-                alert('Error processing CSV: ' + error.message + '. Using demo data instead. Check console for details.');
+                console.error('=== CSV PROCESSING FAILED ===');
+                console.error('Error:', error.message);
+                console.error('Stack:', error.stack);
+                alert('CSV Processing Error: ' + error.message + '\n\nCheck console (F12) for details. Using demo data instead.');
                 loadDemoData();
             }
         }
